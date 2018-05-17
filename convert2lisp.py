@@ -85,4 +85,4 @@ diatonic_pitch_lookup = {
 # o = parse_midi(address)[0]
 # oname = parse_midi(address)[1]
 # olisp = parse_to_lisp(o, oname)
-print(olisp)
+# print(olisp)
