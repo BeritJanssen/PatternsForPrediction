@@ -4,6 +4,7 @@ import math
 from fractions import Fraction
 
 def parse_midi(midipiece):
+    ```Parse a .mid file to quantised format```
     piece = m21.converter.parse(midipiece)
     qpiece = piece.quantize()
     filename = midipiece[:-4]
@@ -54,21 +55,12 @@ def parse_to_lisp(qpiece, filename):
         for event in part.recurse().notes:
             try:
                 diatonic_pitch = diatonic_pitch_lookup[event.pitch.step] + math.floor(event.pitch.midi/12) * 7 - 12
-                # collect_lisp.append(Fraction(event.offset), event.pitch.midi-21, diatonic_pitch, str(Fraction(event.quarterLength)), voice)
-
-                # collect_lisp.append((str((event.offset).as_integer_ratio()).replace(", ","/"), event.pitch.midi-21, diatonic_pitch, str((event.quarterLength).as_integer_ratio()).replace(", ","/"), voice))
-                # collect_lisp.append((Fraction(event.offset), event.pitch.midi-21, diatonic_pitch, Fraction(event.quarterLength), voice))
                 collect_lisp.append((str(event.offset), event.pitch.midi-21, diatonic_pitch, str(event.quarterLength), voice))
             except:
                 # this event is a chord
                 pitches = event.pitches
                 for p in pitches:
                     diatonic_pitch = diatonic_pitch_lookup[p.step] + math.floor(p.midi/12) * 7 - 12
-                    # collect_lisp.append((str((event.offset).as_integer_ratio()).replace(", ","/"), p.midi-21, diatonic_pitch, str((event.quarterLength).as_integer_ratio()).replace(", ","/"), voice))
-
-                    # collect_lisp.append(((event.offset).as_integer_ratio(), p.midi - 21, diatonic_pitch, (event.quarterLength).as_integer_ratio(), voice))
-                    # collect_lisp.append((str(event.offset), p.midi - 21, diatonic_pitch, str(event.quarterLength), voice))
-                    # collect_lisp.append((Fraction(event.offset), p.midi-21, diatonic_pitch, Fraction(event.quarterLength), voice))
                     collect_lisp.append((str(event.offset), p.midi-21, diatonic_pitch, str(event.quarterLength), voice))
     polyphonic_lisp = sorted(collect_lisp, key=lambda k: k[0])
     with open(filename+'_poly.txt', "w+") as f:
@@ -90,7 +82,7 @@ diatonic_pitch_lookup = {
 # Example usage
 # address = "/home/irisren/Dropbox/111Projects/MIREX/2018Prediction/testmidi/Rock Me.mid" (Work with str Fraction)
 # address = "/home/irisren/Dropbox/111Projects/MIREX/2018Prediction/testmidi/Tiger.mid" (Gives float directly without the Fraction)
-o = parse_midi(address)[0]
-oname = parse_midi(address)[1]
-olisp = parse_to_lisp(o, oname)
+# o = parse_midi(address)[0]
+# oname = parse_midi(address)[1]
+# olisp = parse_to_lisp(o, oname)
 print(olisp)
