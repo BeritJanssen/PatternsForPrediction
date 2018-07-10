@@ -1,2 +1,2 @@
-music21
-numpy
+music21==4.1.0
+numpy==1.13.3
