@@ -6,24 +6,26 @@ from fractions import Fraction
 
 def parse_midi(midipiece):
     piece = m21.converter.parse(midipiece)
-    qpiece = piece.quantize()
-    filename = midipiece[:-4]
-    return qpiece, filename
+    return piece
 
 
-def convert_to_monophonic(qpiece):
-    monophonic = next((part for part in qpiece if not [p for p in part.recurse().notes if len(p.pitches) > 1]), None)
+def convert_to_mono(piece):
+    mono = next((part for part in piece.parts if not [p for p in part.recurse().notes if len(p.pitches) > 1]), None)
+    return mono
 
 
-def convert_piece(qpiece, filename):
-    #parse_to_lisp(qpiece, filename)
-    return parse_to_csv(qpiece, filename)
+def convert_piece(piece, filename):
+    convert_to_csv(piece, filename, write=True)
+    convert_to_lisp(piece, filename)
 
 
-def parse_to_csv(qpiece, filename, write=False):
+def convert_to_csv(piece, filename=None, write=False):
+    ''' given a piece parsed by music21, return a list of {'onset', 'pitch'} dictionaries
+    optionally write out this data format as csv (write=True) and define filename
+    '''
     monophonic_csv = []
     collect_csv = []
-    convert_to_monophonic(qpiece)
+    monophonic = convert_to_mono(piece)
     if monophonic:
         for event in monophonic.recurse().notes:
             monophonic_csv.append({
@@ -35,7 +37,7 @@ def parse_to_csv(qpiece, filename, write=False):
                 writer = csv.DictWriter(f, fieldnames=monophonic_csv[0].keys())
                 writer.writeheader()
                 writer.writerows(monophonic_csv)
-    for event in qpiece.recurse().notes:
+    for event in piece.recurse().notes:
         try:
             collect_csv.append({
                 'onset': round(float(event.offset), 2), 
@@ -58,14 +60,10 @@ def parse_to_csv(qpiece, filename, write=False):
     return monophonic_csv, polyphonic_csv
 
 
-def parse_to_lisp(qpiece, filename):
+def convert_to_lisp(piece, filename):
     monophonic_lisp = []
     collect_lisp = []
-    monophonic = next((part for part in qpiece if not [p for p in part.recurse().notes if len(p.pitches) > 1]), None)
-    # index, monophonic = next((
-    #     index, part for index, part in enumerate(qpiece) if not 
-    #     [p for p in part.recurse().notes if len(p.pitches) > 1]
-    # ), None)
+    monophonic = convert_to_mono(piece)
     if monophonic:
         for event in monophonic.recurse().notes:
             diatonic_pitch = diatonic_pitch_lookup[event.pitch.step] + math.floor(event.pitch.midi/12) * 7 - 12
@@ -78,7 +76,7 @@ def parse_to_lisp(qpiece, filename):
         with open(filename+'_mono.txt', "w+") as f:
             for m_tuple in monophonic_lisp:
                 f.write(str(m_tuple)+'\n')
-    for voice, part in enumerate(qpiece):
+    for voice, part in enumerate(piece.parts):
         print(voice)
         for event in part.recurse().notes:
             try:
