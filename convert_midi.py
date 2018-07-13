@@ -27,7 +27,7 @@ def convert_to_csv(piece, filename=None, write=False):
     collect_csv = []
     monophonic = convert_to_mono(piece)
     if monophonic:
-        for event in monophonic.recurse().notes:
+        for event in monophonic.flat.notes:
             monophonic_csv.append({
                 'onset': round(float(event.offset), 2),
                 'pitch': event.pitch.midi
@@ -37,10 +37,10 @@ def convert_to_csv(piece, filename=None, write=False):
                 writer = csv.DictWriter(f, fieldnames=monophonic_csv[0].keys())
                 writer.writeheader()
                 writer.writerows(monophonic_csv)
-    for event in piece.recurse().notes:
+    for event in piece.flat.notes:
         try:
             collect_csv.append({
-                'onset': round(float(event.offset), 2), 
+                'onset': round(float(event.offset), 2),
                 'pitch': event.pitch.midi
             })
         except:
@@ -50,7 +50,7 @@ def convert_to_csv(piece, filename=None, write=False):
                 collect_csv.append({
                     'onset': round(float(event.offset), 2), 
                     'pitch': p.midi
-                })
+            })
     polyphonic_csv = sorted(collect_csv, key=lambda k: k['onset'])
     if write:
         with open(filename+'_poly.csv', "w+") as f:
@@ -77,7 +77,6 @@ def convert_to_lisp(piece, filename):
             for m_tuple in monophonic_lisp:
                 f.write(str(m_tuple)+'\n')
     for voice, part in enumerate(piece.parts):
-        print(voice)
         for event in part.recurse().notes:
             try:
                 diatonic_pitch = diatonic_pitch_lookup[event.pitch.step] + math.floor(event.pitch.midi/12) * 7 - 12
