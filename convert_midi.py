@@ -19,24 +19,24 @@ def convert_piece(piece, filename):
     convert_to_lisp(piece, filename)
 
 
-def convert_to_csv(piece, filename=None, write=False):
+def convert_to_csv(piece, filename=None):
     ''' given a piece parsed by music21, return a list of {'onset', 'pitch'} dictionaries
-    optionally write out this data format as csv (write=True) and define filename
+    optionally write out this data format as csv if filename is specified
     '''
     monophonic_csv = []
     collect_csv = []
-    monophonic = convert_to_mono(piece)
-    if monophonic:
-        for event in monophonic.flat.notes:
-            monophonic_csv.append({
-                'onset': round(float(event.offset), 2),
-                'pitch': event.pitch.midi
-            })
-        if write:
-            with open(filename+'_mono.csv', "w+") as f:
-                writer = csv.DictWriter(f, fieldnames=monophonic_csv[0].keys())
-                writer.writeheader()
-                writer.writerows(monophonic_csv)
+    # monophonic = convert_to_mono(piece)
+    # if monophonic:
+    #     for event in monophonic.flat.notes:
+    #         monophonic_csv.append({
+    #             'onset': round(float(event.offset), 2),
+    #             'pitch': event.pitch.midi
+    #         })
+    #     if filename:
+    #         with open(filename+'_mono.csv', "w+") as f:
+    #             writer = csv.DictWriter(f, fieldnames=monophonic_csv[0].keys())
+    #             writer.writeheader()
+    #             writer.writerows(monophonic_csv)
     for event in piece.flat.notes:
         try:
             collect_csv.append({
@@ -52,7 +52,7 @@ def convert_to_csv(piece, filename=None, write=False):
                     'pitch': p.midi
             })
     polyphonic_csv = sorted(collect_csv, key=lambda k: k['onset'])
-    if write:
+    if filename:
         with open(filename+'_poly.csv', "w+") as f:
             writer = csv.DictWriter(f, fieldnames=polyphonic_csv[0].keys())
             writer.writeheader()
