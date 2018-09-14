@@ -1,3 +1,24 @@
+import os
+import csv
+import pandas as pd
+
+def evaluate_performance(top_dir_originals, dir_generated, keys_originals, keys_generated, outdir):
+    dir_originals = top_dir_originals+'cont_true_csv/'
+    for csv_file in os.listdir(dir_originals):
+        print(csv_file)
+        if not csv_file.startswith('.'):
+            with open(dir_originals+csv_file) as f:
+                r = csv.DictReader(f, keys_originals)
+                original = list(r)
+            with open(dir_generated+csv_file) as f:
+                r = csv.DictReader(f, keys_generated)
+                generated = list(r)
+            with open(top_dir_originals+'prime_csv/'+csv_file) as f:
+                r = csv.DictReader(f, keys_originals)
+                last_event_prime = list(r)[-1]
+            outputlist = evaluate_continuation(original, generated, last_event_prime)
+            outdf = pd.DataFrame(outputlist)
+            outdf.to_csv(outdir+csv_file)
 
 def evaluate_continuation(original, generated, last_event_prime, evaluate_until_onset=10.0):
     """ Given the original and the generated continuation
@@ -29,22 +50,14 @@ def evaluate_continuation(original, generated, last_event_prime, evaluate_until_
             generated_pitches = [int(g['pitch']) for g in generated_events]
             original_iois = [
                 round(
-                    float(o['onset']) - float(original_events[i-1]['onset']), 2
-                ) for i, o in enumerate(original_events)
+                    float(o['onset']) - float(last_event_prime['onset']), 2
+                ) for o in original_events
             ]
-            original_iois[0] = round(
-                float(original_events[0]['onset']) - 
-                float(last_event_prime['onset']), 2
-            )
             generated_iois = [
                 round(
-                    float(o['onset']) - float(generated_events[i-1]['onset']), 2
-                ) for i, o in enumerate(generated_events)
+                    float(g['onset']) - float(last_event_prime['onset']), 2
+                ) for g in generated_events
             ]
-            generated_iois[0] = round(
-                float(generated_events[0]['onset']) - 
-                float(last_event_prime['onset']), 2
-            )
             original_pairs = list(zip(original_pitches, original_iois))
             generated_pairs = list(zip(generated_pitches, generated_iois))
             correct_pitches_at_n = 0
@@ -63,11 +76,16 @@ def evaluate_continuation(original, generated, last_event_prime, evaluate_until_
                     correct_pairs_at_n += 1
                     original_pairs.pop(original_pairs.index(event))
             outputlist.append({
-                onset: {
-                    'pitches_correct': correct_pitches_at_n,
-                    'iois_correct': correct_iois_at_n,
-                    'pitch_duration_pairs_correct': correct_pairs_at_n,
-                    'no_predicted_events': len(original_events)
-                }
+                'onset': onset,
+                'pitches_correct': correct_pitches_at_n,
+                'iois_correct': correct_iois_at_n,
+                'pitch_ioi_pairs_correct': correct_pairs_at_n,
+                'no_predicted_events': len(original_events),
+                'prec_pitch': correct_pitches_at_n / len(generated_events),
+                'prec_ioi': correct_iois_at_n / len(generated_events),
+                'prec_pairs': correct_pitches_at_n / len(generated_events),
+                'rec_pitch': correct_pitches_at_n / len(original_events),
+                'rec_ioi': correct_pitches_at_n / len(original_events),
+                'rec_pairs': correct_pitches_at_n / len(original_events)
             })
     return outputlist
