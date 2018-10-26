@@ -1,15 +1,16 @@
 
-def evaluate_continuation(original, generated, evaluate_until_onset=10.0):
+def evaluate_continuation(original, generated, last_event_prime, evaluate_until_onset=10.0):
     """ Given the original and the generated continuation
     of the test item (in onset/pitch dictionaries),
     collect the following events (which can be mulitple pitches),
-    and determine how many pitches / iois are shared between 
+    and determine how many pitches / iois and pitch/ioi pairs are shared between 
     generated and original piece.
-    evaluate_until_onset determines until how many quarter notes 
-    after the cut-off point we evaluate
-    output is a list of dictionaries, 
-    in which n gives the number of events since cut-off
-    for which correct number of pitches and iois are listed. 
+    For the first ioi, the last event of the prime is also required.
+    'evaluate_until_onset determines' until how many quarter notes 
+    after the cut-off point we evaluate.
+    Output is a list of dictionaries, 
+    in which the key indicates the onsets after cut-off
+    for which correct number of pitches, iois and pitch/ioi pairs are listed. 
     """
 
     original_onsets = sorted(list(set([float(o['onset']) for o in original])))
@@ -22,27 +23,41 @@ def evaluate_continuation(original, generated, evaluate_until_onset=10.0):
             generated_events = [
                 g for g in generated if float(g['onset']) <= onset
             ]
+            if not generated_events:
+                continue
             original_pitches = [int(o['pitch']) for o in original_events]
             generated_pitches = [int(g['pitch']) for g in generated_events]
-            original_durations = [
-                round(float(o['dur']), 2) for o in original_events
+            original_iois = [
+                round(
+                    float(o['onset']) - float(original_events[i-1]['onset']), 2
+                ) for i, o in enumerate(original_events)
             ]
-            generated_durations = [
-                round(float(g['dur']), 2) for g in generated_events
+            original_iois[0] = round(
+                float(original_events[0]['onset']) - 
+                float(last_event_prime['onset']), 2
+            )
+            generated_iois = [
+                round(
+                    float(o['onset']) - float(generated_events[i-1]['onset']), 2
+                ) for i, o in enumerate(generated_events)
             ]
-            original_pairs = list(zip(original_pitches, original_durations))
-            generated_pairs = list(zip(generated_pitches, generated_durations))
+            generated_iois[0] = round(
+                float(generated_events[0]['onset']) - 
+                float(last_event_prime['onset']), 2
+            )
+            original_pairs = list(zip(original_pitches, original_iois))
+            generated_pairs = list(zip(generated_pitches, generated_iois))
             correct_pitches_at_n = 0
-            correct_durations_at_n = 0
+            correct_iois_at_n = 0
             correct_pairs_at_n = 0
             for event in generated_pitches:
                 if event in original_pitches:
                     correct_pitches_at_n += 1
                     original_pitches.pop(original_pitches.index(event))
-            for event in generated_durations:
-                if event in original_durations:
-                    correct_durations_at_n += 1
-                    original_durations.pop(original_durations.index(event))
+            for event in generated_iois:
+                if event in original_iois:
+                    correct_iois_at_n += 1
+                    original_iois.pop(original_iois.index(event))
             for event in generated_pairs:
                 if event in original_pairs:
                     correct_pairs_at_n += 1
@@ -50,7 +65,7 @@ def evaluate_continuation(original, generated, evaluate_until_onset=10.0):
             outputlist.append({
                 onset: {
                     'pitches_correct': correct_pitches_at_n,
-                    'durations_correct': correct_durations_at_n,
+                    'iois_correct': correct_iois_at_n,
                     'pitch_duration_pairs_correct': correct_pairs_at_n,
                     'no_predicted_events': len(original_events)
                 }
