@@ -1,6 +1,10 @@
 import os
 import csv
 import pandas as pd
+from tqdm import tqdm
+import seaborn as sns
+import matplotlib.pyplot as plt
+from glob import glob
 
 def evaluate_performance(
     top_dir_originals, 
@@ -53,7 +57,10 @@ def evaluate_continuation(
     in which the key indicates the onsets after cut-off
     for which correct number of pitches, iois and pitch/ioi pairs are listed. 
     """
-    outputlist = []
+    # outputlist = []
+    score_names = ['ioi', 'pitch', 'combo']
+    scores = {name: {'precision': {}, 'recall': {}, 'f1': {}} 
+              for name in score_names}
     last_onset_prime = float(last_event_prime['onset'])
     max_onset = last_onset_prime + evaluate_until_onset
     no_steps = int(evaluate_until_onset / onset_increment)
@@ -126,21 +133,76 @@ def evaluate_continuation(
                     f1_pairs = 2 * rec_pairs * prec_pairs / (
                         rec_pairs + prec_pairs
                     )
-            outputlist.append({
-                'onset': onset - last_onset_prime,
-                'pitches_correct': correct_pitches_at_n,
-                'iois_correct': correct_iois_at_n,
-                'pitch_ioi_pairs_correct': correct_pairs_at_n,
-                'no_original_events': len(original_events),
-                'no_generated_events': len(generated_events),
-                'prec_pitch': prec_pitch,
-                'prec_ioi': prec_ioi,
-                'prec_pairs': prec_pairs,
-                'rec_pitch': rec_pitch,
-                'rec_ioi': rec_ioi,
-                'rec_pairs': rec_pairs,
-                'f1_pitch': f1_pitch,
-                'f1_ioi': f1_ioi,
-                'f1_pairs': f1_pairs
-            })
-    return outputlist
+            onset = step * onset_increment
+            scores['pitch']['precision'][onset] = prec_pitch
+            scores['pitch']['recall'][onset] = rec_pitch
+            scores['pitch']['f1'][onset] = f1_pitch
+            scores['ioi']['precision'][onset] = prec_ioi
+            scores['ioi']['recall'][onset] = rec_ioi
+            scores['ioi']['f1'][onset] = f1_ioi
+            scores['combo']['precision'][onset] = prec_pairs
+            scores['combo']['recall'][onset] = rec_pairs
+            scores['combo']['f1'][onset] = f1_pairs
+    return scores
+
+
+if __name__ == '__main__':   
+    # Change to point towards a folder containing the unzipped data
+    PATH = '/Users/janss089/Documents/MusicResearch/MIREX/MIREX2018/PPTD/monophonic/'
+    COLNAMES = ['onset', 'pitch', 'morph', 'dur', 'ch']
+    
+    def get_fn(path):
+        return path.split('/')[-1].split('.')[0]
+
+    print('Reading csv files')    
+    part = 'prime'
+    prime = {get_fn(path): pd.read_csv(path, names=COLNAMES) 
+             for path in tqdm(glob('{}/{}_csv/*'.format(PATH, part)))}
+    part = 'cont_foil'
+    cont_foil = {get_fn(path): pd.read_csv(path, names=COLNAMES) 
+                 for path in tqdm(glob('{}/{}_csv/*'.format(PATH, part)))}
+    part = 'cont_true'
+    cont_true = {get_fn(path): pd.read_csv(path, names=COLNAMES) 
+                 for path in tqdm(glob('{}/{}_csv/*'.format(PATH, part)))}
+    fn_list = list(prime.keys())
+    fn = fn_list[0]   
+    print('Scoring compositions with MIREX2018 score (with nan handling)')
+    scores = {}
+    for fn in tqdm(fn_list):
+        scores[fn] = evaluate_list(cont_true[fn].to_dict('records'), cont_foil[fn].to_dict('records'), 
+                                        prime[fn].to_dict('records')[-1],
+                                        0.5, 10.0)
+    print('Scoring compositions with TEC score')
+    old_scores = {}
+    for fn in tqdm(fn_list):
+        old_scores[fn] = evaluate_tec(cont_true[fn].to_dict('records'), cont_foil[fn].to_dict('records'), 
+                                        prime[fn].to_dict('records')[-1],
+                                        0.5, 10.0)
+    print(old_scores)
+    
+    for score_type in ['pitch', 'ioi', 'combo']:
+        for metric in ['recall', 'precision', 'f1']:
+            data = {fn: scores[fn][score_type][metric] for fn in fn_list}
+            df = (pd.DataFrame
+                     .from_dict(data, orient='index')
+                     .reset_index()
+                     .rename(columns={'index': 'fn'})
+                     .melt(id_vars=['fn'], var_name='t', value_name='score')
+                 )
+            df['score_type'] = 'revised_scores'
+            data2 = {fn: old_scores[fn][score_type][metric] for fn in fn_list}
+            df2 = (pd.DataFrame
+                     .from_dict(data2, orient='index')
+                     .reset_index()
+                     .rename(columns={'index': 'fn'})
+                     .melt(id_vars=['fn'], var_name='t', value_name='score')
+                 )
+            df2['score_type'] = 'published_scores'
+            
+            plt.figure()
+            sns.lineplot(x='t', y='score', hue='score_type',
+                         data=pd.concat((df, df2), axis=0))
+            plt.title('{} score, {} metric'.format(score_type, metric))
+    #         plt.ylim([0, 1])
+            plt.show()
+
