@@ -1,7 +1,6 @@
 import os
 import csv
 import re
-import click
 import pandas as pd
 from tqdm import tqdm
 import seaborn as sns
@@ -17,15 +16,18 @@ def evaluate_tec(original, generated):
     precision and recall based on translation equivalence.
     '''
     translation_vectors = []
-    generated_vec = np.array([(float(s['onset']), int(s['pitch'])) for s in generated])
+    generated_vec = np.array([(
+        float(s['onset']), 
+        int(s['pitch'])
+        ) for s in generated])
     original_list = [(float(s['onset']), int(s['pitch'])) for s in original]
     for i in original_list:
         vectors = generated_vec - i
         translation_vectors.extend([tuple(v) for v in vectors])
     grouped_vectors = dict(Counter(translation_vectors))
     max_translation = max([grouped_vectors[k] for k in grouped_vectors])
-    recall = (max_translation - 1) / float(len(original) -1)
-    precision = (max_translation - 1) / float(len(generated) -1)
+    recall = (max_translation - 1) / float(len(original) - 1)
+    precision = (max_translation - 1) / float(len(generated) - 1)
     if precision + recall == 0:
         f1 = 0
     else:
@@ -51,7 +53,6 @@ def evaluate_continuation(
     'evaluate_until_onset' determines until how many quarter notes 
     after the cut-off point we evaluate.
     """
-    # outputlist = []
     scores = {'precision': {}, 'recall': {}, 'f1': {}}
     no_steps = int((evaluate_until_onset - evaluate_from_onset) / onset_increment)
     max_onset = evaluate_until_onset + last_onset_prime
@@ -76,15 +77,18 @@ def evaluate_continuation(
 
 
 if __name__ == '__main__':  
-    # Change to point towards a folder containing the unzipped data
-    PATH = '/Users/janss089/Documents/MusicResearch/MIREX/MIREX2018/PPTD/monophonic/'
+    # Change to point towards a folder containing the dataset
+    PATH = "/PATH/TO/DATASET"
+    # CSV columns in dataset
     COLNAMES = ['onset', 'pitch', 'morph', 'dur', 'ch']
-    compare_dirs = {
-        "FC1": "/Users/janss089/Documents/MusicResearch/MIREX/MIREX2018/Results/FC1/output_mono/1/cont_pred_csv",
-        "EN1": "/Users/janss089/Documents/MusicResearch/MIREX/MIREX2018/Results/EN1/mono",
-        "MM1": "/Users/janss089/Documents/MusicResearch/MIREX/MIREX2018/PPTD/monophonic/cont_foil_csv"
+    # Change to point towards models to compare
+    MODEL_DIRS = {
+       "FC1": "PATH/TO/FC1/GENERATIONS",
+       "EN1": "PATH/TO/EN1/GENERATIONS",
+       "MM1": "PATH/TO/MM1/GENERATIONS"
     }
-    compare_keys = {
+    # CSV columns of the generation files
+    MODEL_KEYS = {
         "FC1": ['onset', 'pitch', 'ioi'],
         "EN1": COLNAMES,
         "MM1": COLNAMES
@@ -103,36 +107,45 @@ if __name__ == '__main__':
     fn_list = list(prime.keys())
     fn = fn_list[0]
     files_dict = {}
-    for alg in compare_dirs.keys():
+    for alg in MODEL_DIRS.keys():
         print('Reading {} output files'.format(alg))
-        files_dict[alg] = {get_fn(path): pd.read_csv(path, names=compare_keys[alg]) 
-                 for path in tqdm(glob('{}/*.csv'.format(compare_dirs[alg])))}
+        files_dict[alg] = {get_fn(path): pd.read_csv(
+            path, names=MODEL_KEYS[alg]
+            ) for path in tqdm(glob('{}/*.csv'.format(MODEL_DIRS[alg])))}
     scores = {key: {} for key in files_dict.keys()}
     for alg in files_dict.keys():
         print('Scoring {} results with TEC score'.format(alg))
         for fn in tqdm(fn_list):
             # the generated file name may have additions to original file name
-            generated_fn = next((alg_fn for alg_fn in files_dict[alg].keys() if re.search(fn, alg_fn)), None)
-            scores[alg][fn] = evaluate_continuation(cont_true[fn].to_dict('records'), files_dict[alg][generated_fn].to_dict('records'), 
-                                        prime[fn].to_dict('records')[-1]['onset'],
-                                        0.5, 2.0, 10.0)                                        
+            generated_fn = next((alg_fn for alg_fn in files_dict[alg].keys() 
+              if re.search(fn, alg_fn)), None)
+            scores[alg][fn] = evaluate_continuation(
+                    cont_true[fn].to_dict('records'), 
+                    files_dict[alg][generated_fn].to_dict('records'), 
+                    prime[fn].to_dict('records')[-1]['onset'],
+                    0.5, 2.0, 10.0
+                )                                       
     df_list = []
     for metric in ['recall', 'precision', 'f1']:
         for key in scores.keys():
             data = {fn: scores[key][fn][metric] for fn in fn_list}
             df = (pd.DataFrame
-                 .from_dict(data, orient='index')
-                 .reset_index()
-                 .rename(columns={'index': 'fn'})
-                 .melt(id_vars=['fn'], var_name='t', value_name='score')
+                    .from_dict(data, orient='index')
+                    .reset_index()
+                    .rename(columns={'index': 'fn'})
+                    .melt(id_vars=['fn'], var_name='t', value_name='score')
              )
             df['model'] = key
             df_list.append(df)
         
         plt.figure()
-        g = sns.lineplot(x='t', y='score', hue='model',
-                     data=pd.concat((df_list), axis=0))
-        g.set(xlabel='Onset', ylabel=str.upper(metric))
+        g = sns.lineplot(
+            x='t', 
+            y='score', 
+            hue='model',
+            data=pd.concat((df_list), axis=0)
+        )
+        g.set(xlabel='Onset', ylabel=str.title(metric))
         plt.title('Comparison of models on {} metric'.format(metric))
     #        plt.ylim([0, 1])
         plt.show()
