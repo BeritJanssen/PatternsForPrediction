@@ -1,1 +1,3 @@
-These files were tested in Python 3.5.4.
+Evaluation script to calculate precision, recall and F1-score of CSV representations of algorithmic continuations against the true continuations, using translation vectors.
+
+To run, run `pip install -r requirements.txt`. Modify the main method below the script to point to the appropriate folders. Then run `python evaluate_prediction.py`. This will calculate the measures and render them as graphs. On Mac OS X, Matplotlib may still need to be configured, see [Matplotlib FAQ](https://matplotlib.org/faq/osx_framework.html). Code tested in Python 3.5.4.
