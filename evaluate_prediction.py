@@ -9,6 +9,7 @@ from glob import glob
 import numpy as np
 from collections import Counter
 
+import config
 
 def evaluate_tec(original, generated):
     '''  
@@ -76,23 +77,11 @@ def evaluate_continuation(
     return scores
 
 
-if __name__ == '__main__':  
-    # Change to point towards a folder containing the dataset
-    PATH = "/PATH/TO/DATASET"
-    # CSV columns in dataset
+if __name__ == '__main__':
+    PATH = config.DATASET_PATH
+    # CSV column keys in dataset
     COLNAMES = ['onset', 'pitch', 'morph', 'dur', 'ch']
-    # Change to point towards models to compare
-    MODEL_DIRS = {
-       "FC1": "PATH/TO/FC1/GENERATIONS",
-       "EN1": "PATH/TO/EN1/GENERATIONS",
-       "MM1": "PATH/TO/MM1/GENERATIONS"
-    }
-    # CSV columns of the generation files
-    MODEL_KEYS = {
-        "FC1": ['onset', 'pitch', 'ioi'],
-        "EN1": COLNAMES,
-        "MM1": COLNAMES
-    }
+    
     
     def get_fn(path):
         return path.split('/')[-1].split('.')[0]
@@ -107,11 +96,11 @@ if __name__ == '__main__':
     fn_list = list(prime.keys())
     fn = fn_list[0]
     files_dict = {}
-    for alg in MODEL_DIRS.keys():
+    for alg in config.MODEL_DIRS.keys():
         print('Reading {} output files'.format(alg))
         files_dict[alg] = {get_fn(path): pd.read_csv(
-            path, names=MODEL_KEYS[alg]
-            ) for path in tqdm(glob('{}/*.csv'.format(MODEL_DIRS[alg])))}
+            path, names=config.MODEL_KEYS[alg]
+            ) for path in tqdm(glob('{}/*.csv'.format(config.MODEL_DIRS[alg])))}
     scores = {key: {} for key in files_dict.keys()}
     for alg in files_dict.keys():
         print('Scoring {} results with TEC score'.format(alg))
