@@ -30,12 +30,12 @@ def evaluate_tec(original, generated):
     recall = (max_translation - 1) / float(len(original) - 1)
     precision = (max_translation - 1) / float(len(generated) - 1)
     if precision + recall == 0:
-        f1 = 0
+        f1 = 0.0
     else:
-        f1 = 2 * recall * precision / (
+        f1 = (2 * recall * precision) / (
             recall + precision
         )
-    output = {'rec': recall, 'prec': precision, 'f1': f1}
+    output = {'rec': recall, 'prec': precision, 'F1': f1}
     return output
 
 
@@ -54,7 +54,7 @@ def evaluate_continuation(
     'evaluate_until_onset' determines until how many quarter notes 
     after the cut-off point we evaluate.
     """
-    scores = {'precision': {}, 'recall': {}, 'f1': {}}
+    scores = {'precision': {}, 'recall': {}, 'F1': {}}
     no_steps = int((evaluate_until_onset - evaluate_from_onset) / onset_increment)
     max_onset = evaluate_until_onset + last_onset_prime
     for step in range(no_steps+1):
@@ -68,12 +68,12 @@ def evaluate_continuation(
             if (len(original_events)<=1 or len(generated_events)<=1):
                 scores['precision'][onset] = None
                 scores['recall'][onset] = None
-                scores['f1'][onset] = None
+                scores['F1'][onset] = None
             else:
                 output = evaluate_tec(original_events, generated_events)
                 scores['precision'][onset] = output['prec']
                 scores['recall'][onset] = output['rec']
-                scores['f1'][onset] = output['f1']
+                scores['F1'][onset] = output['F1']
     return scores
 
 
@@ -115,7 +115,7 @@ if __name__ == '__main__':
                     0.5, 2.0, 10.0
                 )                                       
     df_list = []
-    for metric in ['recall', 'precision', 'f1']:
+    for metric in ['recall', 'precision', 'F1']:
         for key in scores.keys():
             data = {fn: scores[key][fn][metric] for fn in fn_list}
             df = (pd.DataFrame
@@ -126,15 +126,19 @@ if __name__ == '__main__':
              )
             df['model'] = key
             df_list.append(df)
-        
         plt.figure()
+        sns.set_style("whitegrid")
         g = sns.lineplot(
             x='t', 
             y='score', 
             hue='model',
+            hue_order=config.MODEL_DIRS.keys(),
+            style='model',
+            style_order=config.MODEL_DIRS.keys(), 
+            markers=['o', 'v', 's'],
             data=pd.concat((df_list), axis=0)
         )
         g.set(xlabel='Onset', ylabel=str.title(metric))
         plt.title('Comparison of models on {} metric'.format(metric))
-    #        plt.ylim([0, 1])
-        plt.show()
+        filename = metric+".png"
+        g.get_figure().savefig(filename)
