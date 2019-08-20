@@ -25,10 +25,10 @@ def evaluate_cs(original, generated):
     for i in original_list:
         vectors = generated_vec - i
         translation_vectors.extend([tuple(v) for v in vectors])
-    grouped_vectors = dict(Counter(translation_vectors))
-    max_translation = max([grouped_vectors[k] for k in grouped_vectors])
-    recall = (max_translation - 1) / float(len(original) - 1)
-    precision = (max_translation - 1) / float(len(generated) - 1)
+    vector_counts = Counter(translation_vectors)
+    most_common_vector, count = vector_counts.most_common(1)[0]
+    recall = (count - 1) / float(len(original) - 1)
+    precision = (count - 1) / float(len(generated) - 1)
     if precision + recall == 0:
         f1 = 0.0
     else:
