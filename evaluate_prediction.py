@@ -6,7 +6,6 @@ from tqdm import tqdm
 import seaborn as sns
 import matplotlib.pyplot as plt
 from glob import glob
-import numpy as np
 from collections import Counter
 
 import config
@@ -17,13 +16,10 @@ def evaluate_cs(original, generated):
     precision and recall of the cardinality score.
     '''
     translation_vectors = []
-    generated_vec = np.array([(
-        float(s['onset']), 
-        int(s['pitch'])
-        ) for s in generated])
-    original_list = [(float(s['onset']), int(s['pitch'])) for s in original]
-    for i in original_list:
-        vectors = generated_vec - i
+    generated_vec = generated[['onset', 'pitch']].values
+    original_list = original[['onset', 'pitch']].values.tolist()
+    for point in original_list:
+        vectors = generated_vec - point
         translation_vectors.extend([tuple(v) for v in vectors])
     vector_counts = Counter(translation_vectors)
     most_common_vector, count = vector_counts.most_common(1)[0]
@@ -55,16 +51,15 @@ def evaluate_continuation(
     after the cut-off point we evaluate.
     """
     scores = {'precision': {}, 'recall': {}, 'F1': {}}
-    no_steps = int((evaluate_until_onset - evaluate_from_onset) / onset_increment)
+    nr_steps = int((evaluate_until_onset - evaluate_from_onset)
+                   / onset_increment)
     max_onset = evaluate_until_onset + last_onset_prime
-    for step in range(no_steps+1):
+    for step in range(nr_steps + 1):
         onset = step * onset_increment + evaluate_from_onset
         cutoff = last_onset_prime + onset
         if cutoff <= max_onset:
-            original_events = [o for o in original if float(o['onset']) <= cutoff]
-            generated_events = [
-                g for g in generated if float(g['onset']) <= cutoff
-            ]
+            original_events = original[original['onset'] <= cutoff]
+            generated_events = generated[generated['onset'] <= cutoff]
             if (len(original_events)<=1 or len(generated_events)<=1):
                 scores['precision'][onset] = None
                 scores['recall'][onset] = None
@@ -95,22 +90,32 @@ if __name__ == '__main__':
                  for path in tqdm(glob('{}/{}_csv/*'.format(PATH, part)))}
     fn_list = list(prime.keys())
     files_dict = {}
-    for alg in config.MODEL_DIRS.keys():
+    alg_names = config.MODEL_DIRS.keys()
+    for alg in alg_names:
         print('Reading {} output files'.format(alg))
-        files_dict[alg] = {get_fn(path): pd.read_csv(
-            path, names=config.MODEL_KEYS[alg]
-            ) for path in tqdm(glob('{}/*.csv'.format(config.MODEL_DIRS[alg])))}
-    scores = {key: {} for key in files_dict.keys()}
-    for alg in files_dict.keys():
+        files_dict[alg] = {
+            get_fn(path): pd.read_csv(path, names=config.MODEL_KEYS[alg])
+            for path in tqdm(glob('{}/*.csv'.format(config.MODEL_DIRS[alg])))
+        }
+    scores = {alg: {} for alg in alg_names}
+    # TODO: deudupe and preproc here?
+    
+    for alg in alg_names:
         print('Scoring {} results with cardinality score'.format(alg))
         for fn in tqdm(fn_list):
             # the generated file name may have additions to original file name
-            generated_fn = next((alg_fn for alg_fn in files_dict[alg].keys() 
-              if re.search(fn, alg_fn)), None)
+            generated_fn = next(
+                    (alg_fn for alg_fn in files_dict[alg].keys()
+                     if re.search(fn, alg_fn)),
+                    None
+                )
+            true_df = cont_true[fn]
+            gen_df = files_dict[alg][generated_fn]
+            prime_final_onset = prime[fn].iloc[-1]['onset']
             scores[alg][fn] = evaluate_continuation(
-                    cont_true[fn].to_dict('records'), 
-                    files_dict[alg][generated_fn].to_dict('records'), 
-                    prime[fn].to_dict('records')[-1]['onset'],
+                    true_df,
+                    gen_df, 
+                    prime_final_onset,
                     0.5, 2.0, 10.0
                 )                                       
     df_list = []
