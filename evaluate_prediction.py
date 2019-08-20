@@ -11,10 +11,10 @@ from collections import Counter
 
 import config
 
-def evaluate_tec(original, generated):
+def evaluate_cs(original, generated):
     '''  
     given a list of original and generated events, calculate
-    precision and recall based on translation equivalence.
+    precision and recall of the cardinality score.
     '''
     translation_vectors = []
     generated_vec = np.array([(
@@ -48,7 +48,7 @@ def evaluate_continuation(
     evaluate_until_onset):
     """ Given the original and the generated continuation
     of the test item (in onset/pitch dictionaries),
-    collect the following events and get tec score.
+    collect the following events and get the cardinality score.
     'onset_increment' determines the increase of onset steps in evaluation.
     For the first ioi, the last event of the prime is also required.
     'evaluate_until_onset' determines until how many quarter notes 
@@ -70,7 +70,7 @@ def evaluate_continuation(
                 scores['recall'][onset] = None
                 scores['F1'][onset] = None
             else:
-                output = evaluate_tec(original_events, generated_events)
+                output = evaluate_cs(original_events, generated_events)
                 scores['precision'][onset] = output['prec']
                 scores['recall'][onset] = output['rec']
                 scores['F1'][onset] = output['F1']
@@ -103,7 +103,7 @@ if __name__ == '__main__':
             ) for path in tqdm(glob('{}/*.csv'.format(config.MODEL_DIRS[alg])))}
     scores = {key: {} for key in files_dict.keys()}
     for alg in files_dict.keys():
-        print('Scoring {} results with TEC score'.format(alg))
+        print('Scoring {} results with cardinality score'.format(alg))
         for fn in tqdm(fn_list):
             # the generated file name may have additions to original file name
             generated_fn = next((alg_fn for alg_fn in files_dict[alg].keys() 
