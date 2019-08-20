@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import os
-import csv
 import re
 import pandas as pd
 from tqdm import tqdm
