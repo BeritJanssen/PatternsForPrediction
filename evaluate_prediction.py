@@ -94,7 +94,6 @@ if __name__ == '__main__':
     cont_true = {get_fn(path): pd.read_csv(path, names=COLNAMES) 
                  for path in tqdm(glob('{}/{}_csv/*'.format(PATH, part)))}
     fn_list = list(prime.keys())
-    fn = fn_list[0]
     files_dict = {}
     for alg in config.MODEL_DIRS.keys():
         print('Reading {} output files'.format(alg))
