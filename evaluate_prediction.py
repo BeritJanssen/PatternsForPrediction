@@ -72,6 +72,15 @@ def evaluate_continuation(
     return scores
 
 
+def dedup_and_preproc(df):
+    """In order that CS works correctly, we need to ensure there are no
+    duplicate points in (onset, pitch) space. Given that score do not use
+    any other data than onset and pitch, we are safe to drop other columns
+    """
+    df = df[['onset', 'pitch']].drop_duplicates()
+    return df
+
+
 if __name__ == '__main__':
     PATH = config.DATASET_PATH
     # CSV column keys in dataset
@@ -81,24 +90,28 @@ if __name__ == '__main__':
     def get_fn(path):
         return path.split('/')[-1].split('.')[0]
 
-    print('Reading PPTD csv files')    
-    part = 'prime'
+    print('Reading PPTD csv files')
     prime = {get_fn(path): pd.read_csv(path, names=COLNAMES) 
-             for path in tqdm(glob('{}/{}_csv/*'.format(PATH, part)))}
-    part = 'cont_true'
+             for path in tqdm(glob('{}/prime_csv/*'.format(PATH)))}
     cont_true = {get_fn(path): pd.read_csv(path, names=COLNAMES) 
-                 for path in tqdm(glob('{}/{}_csv/*'.format(PATH, part)))}
+                 for path in tqdm(glob('{}/cont_true_csv/*'.format(PATH)))}
+    # preprocessing to remove duplicates
+    cont_true = {fn: dedup_and_preproc(df) for fn, df in cont_true.items()}
     fn_list = list(prime.keys())
+    
     files_dict = {}
     alg_names = config.MODEL_DIRS.keys()
     for alg in alg_names:
         print('Reading {} output files'.format(alg))
-        files_dict[alg] = {
+        alg_cont = {
             get_fn(path): pd.read_csv(path, names=config.MODEL_KEYS[alg])
             for path in tqdm(glob('{}/*.csv'.format(config.MODEL_DIRS[alg])))
         }
+        # preprocessing to remove duplicates
+        alg_cont = {fn: dedup_and_preproc(df) for fn, df in alg_cont.items()}
+        files_dict[alg] = alg_cont
+        
     scores = {alg: {} for alg in alg_names}
-    # TODO: deudupe and preproc here?
     
     for alg in alg_names:
         print('Scoring {} results with cardinality score'.format(alg))
