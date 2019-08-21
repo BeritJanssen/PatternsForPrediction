@@ -145,4 +145,4 @@ if __name__ == '__main__':
         g.set(xlabel='Onset', ylabel=str.title(metric))
         plt.title('Comparison of models on {} metric'.format(metric))
         filename = metric+".png"
-        g.get_figure().savefig(filename)
+        plt.savefig(filename, dpi=300)
