@@ -16,9 +16,11 @@ Where id represents the identity of the exerpt being evaluated, the final
 column is the true continuation score, and all other columns are false
 continuation scores.
 """
-import argparse
 import numpy as np
 import pandas as pd
+
+import config
+
 
 
 def softmax(x, axis=-1):
@@ -57,24 +59,31 @@ def get_scores(x, labels=None):
 
 
 if __name__ == '__main__':
-    # TODO: Parse args
-    
-    # TODO: Get files to score
-    files = ['./mono.csv', './poly.csv']
+    paths = {
+        'mono': config.DISCRIM_MONO_FILES,
+        'poly': config.DISCRIM_POLY_FILES
+    }
     
     # Score each file
     scores = pd.DataFrame(
-        columns=['nr_obs', 'accuracy', 'crossentropy', 'nll_var'],
+        columns=['model', 'data', 'nr_obs', 'accuracy', 'crossentropy',
+                 'nll_var'],
         dtype=float
     )
     scores.nr_obs = scores.nr_obs.astype(int)
-    scores.index.name = 'filename'
-    for fn in files:
-        df = pd.read_csv(fn)
-        x = df.iloc[:, 1:].values
-        scores.loc[fn] = get_scores(x)
+    scores.data = scores.data.astype(str)
+    scores.model = scores.model.astype(str)
+    scores.set_index(['model', 'data'], inplace=True)
     
-    print(scores)
+    for data_type in list(paths.keys()):
+        files = paths[data_type]
+        for model_name, fn in files.items():
+            df = pd.read_csv(fn)
+            x = df.iloc[:, 1:].values
+            scores.loc[(model_name, data_type), :] = get_scores(x)
+    
     # TODO: Check files have same set of ids (warn if not)
     
     # TODO: Output table of results
+    scores.round(decimals=3).to_html('./discrim_table.html')
+    scores.round(decimals=3).to_latex('./discrim_table.tex')
