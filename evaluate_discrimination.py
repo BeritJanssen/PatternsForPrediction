@@ -84,6 +84,6 @@ if __name__ == '__main__':
     
     # TODO: Check files have same set of ids (warn if not)
     
-    # TODO: Output table of results
+    # Output table of results
     scores.round(decimals=3).to_html('./discrim_table.html')
     scores.round(decimals=3).to_latex('./discrim_table.tex')
