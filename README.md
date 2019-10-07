@@ -19,5 +19,15 @@ MODEL_KEYS = {
     'model2': ['onset', 'pitch', 'ioi', 'mnn'],
     'baseline': ['onset', 'pitch', 'morph', 'dur', 'ch']
 }
+# Discrimination task monophonic files; keys used as model name
+DISCRIM_MONO_FILES = {
+    'mdl1': 'path/to/mono1.csv',
+    'mdl2': 'path/to/mono2.csv'
+}
+# Discrimination task polyphonic files; keys used as model name
+DISCRIM_POLY_FILES = {
+    'mdl1': 'path/to/poly1.csv',
+    'mdl2': 'path/to/poly2.csv'
+}
 ```
 3. Then run `python evaluate_prediction.py`. This will calculate the measures and render them as graphs. On Mac OS X, Matplotlib may still need to be configured, see [Matplotlib FAQ](https://matplotlib.org/faq/osx_framework.html). Code tested in Python 3.5.4.
