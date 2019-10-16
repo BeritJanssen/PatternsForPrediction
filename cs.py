@@ -1,5 +1,6 @@
 from collections import Counter
 import re
+import os.path as op
 
 import pandas as pd
 from tqdm import tqdm
@@ -76,12 +77,13 @@ def evaluate_continuation(original, generated, last_onset_prime,
 
     Returns
     -------
-    output : dict[dict[float]]
-        A dictionary containing three keys: 'rec', 'prec' and 'F1', under each
-        of these is another dictionary with keys representing the number of
-        onsets being evaluated to.
+    output : pd.DataFrame
+        A dataframe containing three columns:
+        - 'onset' (evaluation is up to this onset)
+        - 'measure' (prec / rec / F1)
+        - 'value' for the onset / measure pair
     """
-    scores = {'precision': {}, 'recall': {}, 'F1': {}}
+    scores = {'Onset': [], 'Precision': [], 'Recall': [], 'F1': []}
     nr_steps = int((evaluate_until_onset - evaluate_from_onset)
                    / onset_increment)
     max_onset = evaluate_until_onset + last_onset_prime
@@ -89,23 +91,25 @@ def evaluate_continuation(original, generated, last_onset_prime,
         onset = step * onset_increment + evaluate_from_onset
         cutoff = last_onset_prime + onset
         if cutoff <= max_onset:
+            scores['Onset'].append(onset)
             # Select all rows with onset times less than or equal to cutoff
             original_events = original[original['onset'] <= cutoff]
             generated_events = generated[generated['onset'] <= cutoff]
             if (len(original_events) <= 1 or len(generated_events) <= 1):
-                scores['precision'][onset] = None
-                scores['recall'][onset] = None
-                scores['F1'][onset] = None
+                scores['Precision'].append(None)
+                scores['Recall'].append(None)
+                scores['F1'].append(None)
+                continue
             else:
                 output = evaluate_cs(original_events, generated_events)
-                scores['precision'][onset] = output['prec']
-                scores['recall'][onset] = output['rec']
-                scores['F1'][onset] = output['F1']
-    return scores
+                scores['Precision'].append(output['prec'])
+                scores['Recall'].append(output['rec'])
+                scores['F1'].append(output['F1'])
+    return pd.DataFrame(scores)
 
 
 def score_cs(fn_list, alg_names, files_dict, cont_true, prime):
-    card_scores = {alg: {} for alg in alg_names}
+    card_scores = []
     for alg in alg_names:
         print(f'Scoring {alg} with cardinality score')
         for fn in tqdm(fn_list):
@@ -118,40 +122,41 @@ def score_cs(fn_list, alg_names, files_dict, cont_true, prime):
             true_df = cont_true[fn]
             gen_df = files_dict[alg][generated_fn]
             prime_final_onset = prime[fn].iloc[-1]['onset']
-            card_scores[alg][fn] = evaluate_continuation(
+            cs_score = evaluate_continuation(
                 true_df,
                 gen_df,
                 prime_final_onset,
                 0.5, 2.0, 10.0
             )
-    
-    df_list = []
-    for measure in ['recall', 'precision', 'F1']:
-        metric = 'cardinality'
-        for key in card_scores.keys():
-            data = {fn: card_scores[key][fn][measure] for fn in fn_list}
-            df = (pd.DataFrame
-                    .from_dict(data, orient='index')
-                    .reset_index()
-                    .rename(columns={'index': 'fn'})
-                    .melt(id_vars=['fn'], var_name='t',
-                          value_name=f'{metric} score')
-            )
-            df['model'] = key
-            df_list.append(df)
-        plt.figure()
-        sns.set_style("whitegrid")
-        g = sns.lineplot(
-            x='t',
-            y=f'{metric} score',
-            hue='model',
-            hue_order=config.MODEL_DIRS.keys(),
-            style='model',
-            style_order=config.MODEL_DIRS.keys(),
-            markers=['o', 'v', 's'],
-            data=pd.concat((df_list), axis=0)
+            cs_score['fn'] = fn
+            cs_score['Model'] = alg
+            card_scores.append(cs_score)
+    card_df = pd.concat(card_scores, axis=0)
+    data = card_df.melt(
+        id_vars=['fn', 'Onset', 'Model'], 
+        value_vars=['Precision', 'Recall', 'F1'], 
+        var_name="measure",
+        value_name="Score"
+    )
+    plt.figure()
+    sns.set_style("whitegrid")
+    g = sns.FacetGrid(
+        data,
+        col='measure',
+        hue='Model',
+        hue_order=config.MODEL_DIRS.keys(),
+        hue_kws={
+            'marker': ['o', 'v', 's'],
+            'linestyle' : [":","--","-"]
+        }
         )
-        g.set(xlabel='Onset', ylabel=str.title(measure))
-        plt.title(f'Comparison by {measure} of {metric} score')
-        filename = f"{metric}_score__{measure}.png"
-        plt.savefig(filename, dpi=300)
+    g = g.map(
+        sns.lineplot,
+        'Onset',
+        'Score'
+        # style='Model',
+        # style_order=config.MODEL_DIRS.keys(),
+        # markers=['o', 'v', 's']
+    ).add_legend()
+    filename = op.join(config.OUTPUT_FOLDER, '{}_cs_scores.png'.format(config.FILENAME_FRAGMENT))
+    plt.savefig(filename, dpi=300)
