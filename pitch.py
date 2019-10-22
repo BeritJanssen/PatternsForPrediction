@@ -1,9 +1,12 @@
 import re
+import os.path as op
 
 import pandas as pd
 from tqdm import tqdm
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+import config
 
 def evaluate_pitch_score(original, generated, ignore_octave=False):
     '''Given a original and generated events, calculate the pitch score. It is
@@ -43,8 +46,7 @@ def evaluate_pitch_score(original, generated, ignore_octave=False):
 
 
 def score_pitch(fn_list, alg_names, files_dict, cont_true):
-    pitch_scores = {alg: {} for alg in alg_names}
-    pitch_scores_nooctave = {alg: {} for alg in alg_names}
+    pitch_scores = []
     for alg in alg_names:
         print(f'Scoring {alg} with pitch score')
         for fn in tqdm(fn_list):
@@ -56,75 +58,54 @@ def score_pitch(fn_list, alg_names, files_dict, cont_true):
             )
             true_df = cont_true[fn]
             gen_df = files_dict[alg][generated_fn]
-            pitch_scores[alg][fn] = evaluate_pitch_score(
+            pitch_score = evaluate_pitch_score(
                 true_df,
                 gen_df
             )
-            pitch_scores_nooctave[alg][fn] = evaluate_pitch_score(
+            pitch_score_nooctave = evaluate_pitch_score(
                 true_df,
                 gen_df,
                 ignore_octave=True
             )
-            
-    metric = 'pitch'
-    df_list = []
-    pitch_score_table = pd.DataFrame(columns=['mean', 'median', 'sd'],
-                                     dtype=float)
-    pitch_score_table.index.name = 'alg'
-    for key in pitch_scores.keys():
-        data = {fn: pitch_scores[key][fn] for fn in fn_list}
-        df = (
-            pd.DataFrame
-                .from_dict(data, orient='index')
-                .reset_index()
-                .rename(columns={'index': 'fn', 0: 'pitch_score'})
-        )
-        df['model'] = key
-        df_list.append(df)
-        pitch_score_table.loc[key, :] = [df.pitch_score.mean(),
-                                           df.pitch_score.median(),
-                                           df.pitch_score.std()]
-    df = pd.concat(df_list, axis=0)
+            pitch_scores.append(
+                {'fn': fn,
+                'Pitch': pitch_score, 
+                'Modulo12Pitch': pitch_score_nooctave,
+                'Model': alg}
+            )
+    scores_df = pd.DataFrame.from_dict(pitch_scores)
+    data = scores_df.melt(
+        id_vars=['fn', 'Model'], 
+        value_vars=['Pitch', 'Modulo12Pitch'],
+        var_name='score')
     plt.figure()
     sns.set_style("whitegrid")
-    sns.violinplot(x='model', y='pitch_score', data=df, ax=plt.gca(),
-                   scale='width', bw=.1, cut=0)
-    plt.title(f'Comparison of {metric} score')
-    filename = f"{metric}_score.png"
-    plt.savefig(filename, dpi=300)
-    rounded_pitch_score_table = pitch_score_table.round(decimals=3)
-    print(rounded_pitch_score_table)
-    rounded_pitch_score_table.to_html(f'{metric}_score_table.html')
-    rounded_pitch_score_table.to_latex(f'{metric}_score_table.tex')
-    
-    
-    metric = 'pitch_no_octave'
-    df_list = []
-    pitch_score_table = pd.DataFrame(columns=['mean', 'median', 'sd'],
-                                     dtype=float)
-    pitch_score_table.index.name = 'alg'
-    for key in pitch_scores_nooctave.keys():
-        data = {fn: pitch_scores_nooctave[key][fn] for fn in fn_list}
-        df = (
-            pd.DataFrame
-                .from_dict(data, orient='index')
-                .reset_index()
-                .rename(columns={'index': 'fn', 0: 'pitch_score'})
+    g = sns.FacetGrid(
+        data,
+        col='score',
+        hue='Model',
+        hue_order=config.MODEL_DIRS.keys()
         )
-        df['model'] = key
-        df_list.append(df)
-        pitch_score_table.loc[key, :] = [df.pitch_score.mean(),
-                                         df.pitch_score.median(),
-                                         df.pitch_score.std()]
-    df = pd.concat(df_list, axis=0)
-    plt.figure()
-    sns.set_style("whitegrid")
-    sns.violinplot(x='model', y='pitch_score', data=df, ax=plt.gca(),
-                   scale='width', bw=.1, cut=0)
-    plt.title(f'Comparison of {metric} score')
-    filename = f"{metric}_score.png"
+    g = g.map(
+        sns.violinplot,
+        'Model',
+        'value',
+        order=config.MODEL_DIRS.keys()
+        # scale='width', bw=.1, cut=0
+    )
+    filename = op.join(config.OUTPUT_FOLDER, '{}_pitch_scores.png'.format(config.FILENAME_FRAGMENT))
     plt.savefig(filename, dpi=300)
-    rounded_pitch_score_table = pitch_score_table.round(decimals=3)
-    print(rounded_pitch_score_table)
-    rounded_pitch_score_table.to_html(f'{metric}_score_table.html')
-    rounded_pitch_score_table.to_latex(f'{metric}_score_table.tex')
+
+    # tables
+    pitch_stats = scores_df.groupby('Model').agg(
+        {'Pitch':['mean', 'median', 'std']})
+    rounded_pitch_score_table = pitch_stats.round(decimals=3)
+    filename = op.join(config.OUTPUT_FOLDER, '{}_pitch_table'.format(config.FILENAME_FRAGMENT))
+    rounded_pitch_score_table.to_html(filename + '.html')
+    rounded_pitch_score_table.to_latex(filename + '.tex')
+    pitch_no_octave_stats = scores_df.groupby('Model').agg(
+        {'Modulo12Pitch':['mean', 'median', 'std']})
+    rounded_pitch_score_table = pitch_no_octave_stats.round(decimals=3)
+    filename = op.join(config.OUTPUT_FOLDER, '{}_pitch_no_octave_table'.format(config.FILENAME_FRAGMENT))
+    rounded_pitch_score_table.to_html(filename + '.html')
+    rounded_pitch_score_table.to_latex(filename + '.tex')

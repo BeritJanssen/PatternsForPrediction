@@ -153,7 +153,7 @@ def score_cs(fn_list, alg_names, files_dict, cont_true, prime):
     g = g.map(
         sns.lineplot,
         'Onset',
-        'Score'
+        'Score',
         # style='Model',
         # style_order=config.MODEL_DIRS.keys(),
         # markers=['o', 'v', 's']

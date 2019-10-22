@@ -58,5 +58,5 @@ if __name__ == '__main__':
         alg_cont = {fn: dedup_and_preproc(df) for fn, df in alg_cont.items()}
         files_dict[alg] = alg_cont
 
-    #score_pitch(fn_list, alg_names, files_dict, cont_true) 
-    score_cs(fn_list, alg_names, files_dict, cont_true, prime)
+    score_pitch(fn_list, alg_names, files_dict, cont_true) 
+    #score_cs(fn_list, alg_names, files_dict, cont_true, prime)
