@@ -16,6 +16,8 @@ Where id represents the identity of the exerpt being evaluated, the final
 column is the true continuation score, and all other columns are false
 continuation scores.
 """
+import os.path as op
+
 import numpy as np
 import pandas as pd
 
@@ -85,5 +87,5 @@ if __name__ == '__main__':
     # TODO: Check files have same set of ids (warn if not)
     
     # Output table of results
-    scores.round(decimals=3).to_html('./discrim_table.html')
-    scores.round(decimals=3).to_latex('./discrim_table.tex')
+    scores.round(decimals=3).to_html(op.join(config.OUTPUT_FOLDER, 'discrim_table.html')
+    scores.round(decimals=3).to_latex(op.join(config.OUTPUT_FOLDER, 'discrim_table.tex')
