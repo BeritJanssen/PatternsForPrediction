@@ -87,5 +87,5 @@ if __name__ == '__main__':
     # TODO: Check files have same set of ids (warn if not)
     
     # Output table of results
-    scores.round(decimals=3).to_html(op.join(config.OUTPUT_FOLDER, 'discrim_table.html')
-    scores.round(decimals=3).to_latex(op.join(config.OUTPUT_FOLDER, 'discrim_table.tex')
+    scores.round(decimals=3).to_html(op.join(config.OUTPUT_FOLDER, 'discrim_table.html'))
+    scores.round(decimals=3).to_latex(op.join(config.OUTPUT_FOLDER, 'discrim_table.tex'))
