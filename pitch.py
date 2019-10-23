@@ -88,8 +88,8 @@ def score_pitch(fn_list, alg_names, files_dict, cont_true):
         )
     g = g.map(
         sns.violinplot,
-        'Model',
         'value',
+        'Model',
         order=config.MODEL_DIRS.keys()
         # scale='width', bw=.1, cut=0
     )

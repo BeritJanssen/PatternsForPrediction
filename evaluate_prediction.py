@@ -59,4 +59,4 @@ if __name__ == '__main__':
         files_dict[alg] = alg_cont
 
     score_pitch(fn_list, alg_names, files_dict, cont_true) 
-    #score_cs(fn_list, alg_names, files_dict, cont_true, prime)
+    score_cs(fn_list, alg_names, files_dict, cont_true, prime)

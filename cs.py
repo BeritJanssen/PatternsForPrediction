@@ -146,8 +146,8 @@ def score_cs(fn_list, alg_names, files_dict, cont_true, prime):
         hue='Model',
         hue_order=config.MODEL_DIRS.keys(),
         hue_kws={
-            'marker': ['o', 'v', 's'],
-            'linestyle' : [":","--","-"]
+            'marker': ['o', 'v', 's', 'D'],
+            'linestyle' : [":","--","-", "-."]
         }
         )
     g = g.map(
