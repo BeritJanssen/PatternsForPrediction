@@ -25,31 +25,6 @@ import numpy as np
 import pandas as pd
 
 import config
-
-
-
-SMALLEST_NUMBER = np.finfo(float).eps
-
-
-
-def softmax(x, axis=-1):
-    """Returns the softmax for each row of the input x. For numerical
-    stability, we subtract the maximum value from each row first before getting
-    the exponents.
-    """
-    exp = np.exp(x - np.max(x, axis=axis, keepdims=True))
-    return exp / np.sum(exp, axis=axis, keepdims=True)
-
-
-def negloglike(x, labels):
-    """Returns the negative log likelihood from each row of x (unnormalized
-    probabilities - we apply a softmax to each row first).
-    """
-    # TODO: note that it is assumed every row has already been normalized
-#    probs = softmax(x)
-    probs = x
-    # select only the prob of true lab
-    return -np.log(probs[:, labels] + SMALLEST_NUMBER)
     
 
 def get_scores(x, labels=None):
@@ -64,18 +39,8 @@ def get_scores(x, labels=None):
     if labels is None:
         labels = max_idx * np.ones(nr_obs, dtype=int)
     accuracy = np.mean(np.argmax(x, axis=-1) == labels)
-    nll = negloglike(x, labels)
-    crossent = np.mean(nll)
-    # Renormalising and making 1 best and 0 worst
-    worst_crossent = -np.log(SMALLEST_NUMBER)
-    best_crossent = -np.log(1 + SMALLEST_NUMBER)
-    # renormalise
-    crossent_score = ((crossent - best_crossent) /
-                      (worst_crossent - best_crossent))
-    # reverse
-    crossent_score = 1 - crossent_score
-#    nll_var = np.var(nll)
-    return nr_obs, accuracy, crossent_score
+    avg_prob = np.mean(x[:, labels])
+    return nr_obs, accuracy, avg_prob
 
 
 if __name__ == '__main__':
@@ -86,7 +51,7 @@ if __name__ == '__main__':
     
     # Score each file
     scores = pd.DataFrame(
-        columns=['model', 'data', 'nr_obs', 'accuracy', 'crossentropy_score'],
+        columns=['model', 'data', 'nr_obs', 'accuracy', 'avg_probability'],
         dtype=float
     )
     scores.nr_obs = scores.nr_obs.astype(int)
