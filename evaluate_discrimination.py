@@ -40,7 +40,8 @@ def get_scores(x, labels=None):
         labels = max_idx * np.ones(nr_obs, dtype=int)
     accuracy = np.mean(np.argmax(x, axis=-1) == labels)
     avg_prob = np.mean(x[:, labels])
-    return nr_obs, accuracy, avg_prob
+    var_prob = np.var(x[:, labels])
+    return nr_obs, accuracy, avg_prob, var_prob
 
 
 if __name__ == '__main__':
@@ -51,7 +52,8 @@ if __name__ == '__main__':
     
     # Score each file
     scores = pd.DataFrame(
-        columns=['model', 'data', 'nr_obs', 'accuracy', 'avg_probability'],
+        columns=['model', 'data', 'nr_obs', 'accuracy', 'mean_probability',
+                 'var_prob'],
         dtype=float
     )
     scores.nr_obs = scores.nr_obs.astype(int)
