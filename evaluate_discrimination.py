@@ -66,12 +66,11 @@ if __name__ == '__main__':
         for model_name, fn in files.items():
             df = pd.read_csv(fn)
             x = df.iloc[:, 1:].values
-            assert np.allclose(np.sum(x, axis=1), np.ones(x.shape[0])), (
-                f'Rows in {model_name} discrim file do not sum to one. '
-                'It is expected each value represents the probability of the '
-                'each excerpt being the true continuation so rows should sum '
-                'to one.')
+            if not np.allclose(np.sum(x, axis=1), np.ones(x.shape[0])):
+                row_sums = x.sum(axis=1)
+                x = x / row_sums[:, np.newaxis]
             scores.loc[(model_name, data_type), :] = get_scores(x)
+            print(get_scores(x))
     
     # TODO: Check files have same set of ids (warn if not)
     
