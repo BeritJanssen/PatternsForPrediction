@@ -70,7 +70,6 @@ if __name__ == '__main__':
                 row_sums = x.sum(axis=1)
                 x = x / row_sums[:, np.newaxis]
             scores.loc[(model_name, data_type), :] = get_scores(x)
-            print(get_scores(x))
     
     # TODO: Check files have same set of ids (warn if not)
     
