@@ -15,6 +15,9 @@ The input data files are expected to be of the format:
 Where id represents the identity of the exerpt being evaluated, the final
 column is the true continuation score, and all other columns are false
 continuation scores.
+
+N.B. It is assumed that the rows sum to 1, with the values representing the
+probability of each excerpt being the true continuation.
 """
 import os.path as op
 
@@ -22,24 +25,6 @@ import numpy as np
 import pandas as pd
 
 import config
-
-
-
-def softmax(x, axis=-1):
-    """Returns the softmax for each row of the input x. For numerical
-    stability, we subtract the maximum value from each row first before getting
-    the exponents.
-    """
-    exp = np.exp(x - np.max(x, axis=axis, keepdims=True))
-    return exp / np.sum(exp, axis=axis, keepdims=True)
-
-
-def negloglike(x, labels):
-    """Returns the negative log likelihood from each row of x (unnormalized
-    probabilities - we apply a softmax to each row first).
-    """
-    probs = softmax(x)
-    return -np.log(probs[:, labels])  # select only the prob of true lab
     
 
 def get_scores(x, labels=None):
@@ -54,10 +39,9 @@ def get_scores(x, labels=None):
     if labels is None:
         labels = max_idx * np.ones(nr_obs, dtype=int)
     accuracy = np.mean(np.argmax(x, axis=-1) == labels)
-    nll = negloglike(x, labels)
-    crossent = np.mean(nll)
-    nll_var = np.var(nll)
-    return nr_obs, accuracy, crossent, nll_var
+    avg_prob = np.mean(x[:, labels])
+    var_prob = np.var(x[:, labels])
+    return nr_obs, accuracy, avg_prob, var_prob
 
 
 if __name__ == '__main__':
@@ -68,8 +52,8 @@ if __name__ == '__main__':
     
     # Score each file
     scores = pd.DataFrame(
-        columns=['model', 'data', 'nr_obs', 'accuracy', 'crossentropy',
-                 'nll_var'],
+        columns=['model', 'data', 'nr_obs', 'accuracy', 'mean_probability',
+                 'var_prob'],
         dtype=float
     )
     scores.nr_obs = scores.nr_obs.astype(int)
@@ -82,10 +66,19 @@ if __name__ == '__main__':
         for model_name, fn in files.items():
             df = pd.read_csv(fn)
             x = df.iloc[:, 1:].values
+            assert np.allclose(np.sum(x, axis=1), np.ones(x.shape[0])), (
+                f'Rows in {model_name} discrim file do not sum to one. '
+                'It is expected each value represents the probability of the '
+                'each excerpt being the true continuation so rows should sum '
+                'to one.')
             scores.loc[(model_name, data_type), :] = get_scores(x)
     
     # TODO: Check files have same set of ids (warn if not)
     
     # Output table of results
-    scores.round(decimals=3).to_html(op.join(config.OUTPUT_FOLDER, 'discrim_table.html'))
-    scores.round(decimals=3).to_latex(op.join(config.OUTPUT_FOLDER, 'discrim_table.tex'))
+    scores.round(decimals=3).to_html(op.join(config.OUTPUT_FOLDER,
+                'discrim_table.html'))
+    scores.round(decimals=3).to_latex(op.join(config.OUTPUT_FOLDER,
+                'discrim_table.tex'))
+
+    print(scores.round(decimals=3))

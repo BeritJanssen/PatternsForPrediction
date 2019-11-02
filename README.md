@@ -4,6 +4,8 @@ To run:
 1. run `pip install -r requirements.txt`. 
 2. Make a file named `config.py` and define the following:
 ```python
+# Location to write output to
+OUTPUT_FOLDER = ''
 # point the dataset path to the appropriate path on your file system
 DATASET_PATH = "path/to/the/evaluation/set"
 # model_dirs is a dictionary with the tested model as key,
@@ -31,3 +33,4 @@ DISCRIM_POLY_FILES = {
 }
 ```
 3. Then run `python evaluate_prediction.py`. This will calculate the measures and render them as graphs. On Mac OS X, Matplotlib may still need to be configured, see [Matplotlib FAQ](https://matplotlib.org/faq/osx_framework.html). Code tested in Python 3.5.4.
+4. Finally run `python evaluate_discrimination.py`
